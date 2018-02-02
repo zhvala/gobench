@@ -1,7 +1,7 @@
 package main
 
-//BenchJob struct
-type BenchJob struct {
+//HTTPTask struct
+type HTTPTask struct {
 	URL         string
 	HTTPVersion int
 	HTTPMethod  int
