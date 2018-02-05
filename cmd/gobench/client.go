@@ -1,7 +1,13 @@
 package main
 
 import (
+	"crypto/tls"
+	"fmt"
+	"net"
+	"net/http"
 	"sync"
+
+	"golang.org/x/net/http2"
 )
 
 //ClientPool contains a amount of clients, each client runs in a goroutine
@@ -50,5 +56,37 @@ type Client struct {
 
 // Process do http request
 func (client *Client) Process(task *Task) {
-
+	if task.HTTPVersion != HTTP && task.HTTPVersion != HTTP2 {
+		return
+	}
+	var httpCli *http.Client
+	if task.HTTPVersion == HTTP2 {
+		transport := &http2.Transport{
+			AllowHTTP: false, // Allow unsafe connection 允许非加密的链接
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+				NextProtos:         []string{"h2"},
+			},
+			DialTLS: func(netw, addr string, cfg *tls.Config) (net.Conn, error) {
+				return tls.Dial(netw, addr, cfg)
+			},
+		}
+		httpCli = &http.Client{
+			Timeout:   task.Timeout,
+			Transport: transport,
+		}
+	} else {
+		httpCli = &http.Client{
+			Timeout: task.Timeout,
+		}
+	}
+	req, err := http.NewRequest(task.HTTPMethod, task.URL, nil)
+	if err != nil {
+		return
+	}
+	rep, err := httpCli.Do(req)
+	if err != nil {
+		return
+	}
+	fmt.Println(rep.Status)
 }
