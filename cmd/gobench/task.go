@@ -1,9 +1,25 @@
 package main
 
-//HTTPTask struct
-type HTTPTask struct {
-	URL         string
-	HTTPVersion int
-	HTTPMethod  int
-	Concorrency int
+const (
+	// HTTP Protocol
+	HTTP = iota
+	// WebSocket Protocol
+	WebSocket
+)
+
+// Task struct
+type Task struct {
+	URL             string
+	ProtocolVersion int
+	HTTPMethod      string
+}
+
+// CreateTask create a task from given cmd args
+func CreateTask(cmdArgs CmdArgs) (task *Task) {
+	task = &Task{
+		URL:             cmdArgs.URL,
+		ProtocolVersion: cmdArgs.HTTPVersion,
+		HTTPMethod:      cmdArgs.HTTPMethod,
+	}
+	return
 }
