@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	// get cmd args
 	cmdArgs := ParseCmdArgs()
 	task := CreateTask(cmdArgs)
 	pool := CreateClientPool(cmdArgs.Clients)

@@ -2,34 +2,15 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 	"time"
 )
 
 // supports GET|HEAD|OPTION|TRACE
 var (
 	// UsageInfo cmd args usage info
-	UsageInfo = map[string][]interface{}{
-		"help":    {"help", false, "This information."},
-		"h":       {"h", false, "This information."},
-		"?":       {"?", false, "This information."},
-		"version": {"version", false, "Display program version."},
-		"V":       {"V", false, "Display program version."},
-		"client":  {"client", 1, "Run <n> HTTP clients at once. Default one."},
-		"C":       {"C", 1, "Run <n> HTTP clients at once. Default one."},
-		"time":    {"time", 60, "Run gobench for <sec> seconds. Default 60."},
-		"http2":   {"http2", false, "Use HTTP/2.0 protocol."},
-		"H2":      {"H2", false, "Use HTTP/2.0 protocol."},
-		"proxy":   {"proxy", "", "Use proxy server for request. <host:port>."},
-		"P":       {"P", "", "Use proxy server for request. <host:port>."},
-		"get":     {"get", false, "Use GET request method."},
-		"head":    {"head", false, "Use HEAD request method."},
-		"option":  {"option", false, "Use OPTIONS request method."},
-		"trace":   {"trace", false, "Use TRACE request method."},
-		"force":   {"force", false, "Don't wait for reply from server."},
-		"F":       {"F", false, "Don't wait for reply from server."},
-		"reload":  {"reload", false, "Send reload request - Pragma: no-cache."},
-		"R":       {"R", false, "Send reload request - Pragma: no-cache."},
-	}
+	UsageInfo = map[string][]interface{}{}
 )
 
 // CmdArgs 接收命令行参数
@@ -51,19 +32,100 @@ type CmdArgs struct {
 	Force bool
 	// Reload, sent reload request 发生重新加载请求
 	Reload bool
-	// Help, show help info 是否显示帮助信息
-	Help bool
-	// AppVersion, show app version 显示软件版本
-	AppVersion string
 }
 
 // ParseCmdArgs 从命令行读取参数
 // ParseCmdArgs paser args from cmd
 func ParseCmdArgs() (cmdArgs CmdArgs) {
-	var url string
-	url = flag.String("url", "", "url address")
-	flag.StringVar(&url, "u")
+	argc := len(os.Args)
+	if argc <= 1 {
+		panic("gobench need at least one parameter")
+	}
+	url := os.Args[argc-1]
+	if !checkURL(url) {
+		panic("")
+	}
+
+	// Help, show help info 是否显示帮助信息
+	var help bool
+	flag.BoolVar(&help, "help", false, "This information.")
+	flag.BoolVar(&help, "H", false, "This information.")
+	flag.BoolVar(&help, "?", false, "This information.")
+	// AppVersion, show app version 显示软件版本
+	var appVersion bool
+	flag.BoolVar(&appVersion, "version", false, "Display program version.")
+	flag.BoolVar(&appVersion, "V", false, "Display program version.")
+
+	var clients int
+	flag.IntVar(&clients, "client", 1, "Run <n> HTTP clients at once. Default 1.")
+	flag.IntVar(&clients, "C", 1, "Run <n> HTTP clients at once. Default 1.")
+
+	var runTime int
+	flag.IntVar(&runTime, "time", 60, "Run gobench for <sec> seconds. Default 60.")
+	flag.IntVar(&runTime, "T", 60, "Run gobench for <sec> seconds. Default 60.")
+
+	var http2 bool
+	flag.BoolVar(&http2, "http2", false, "Use HTTP/2.0 protocol.")
+	flag.BoolVar(&http2, "H2", false, "Use HTTP/2.0 protocol.")
+
+	var proxy string
+	flag.StringVar(&proxy, "proxy", "", "Use proxy server for request. <host:port>.")
+	flag.StringVar(&proxy, "P", "", "Use proxy server for request. <host:port>.")
+
+	var getMethod, headMethod, optionMethod, traceMethod bool
+	flag.BoolVar(&getMethod, "get", false, "Use GET request method.")
+	flag.BoolVar(&headMethod, "head", false, "Use HEAD request method.")
+	flag.BoolVar(&optionMethod, "option", false, "Use OPTIONS request method.")
+	flag.BoolVar(&traceMethod, "trace", false, "Use TRACE request method.")
+
+	var force, reload bool
+	flag.BoolVar(&force, "force", false, "Don't wait for reply from server.")
+	flag.BoolVar(&force, "F", false, "Don't wait for reply from server.")
+	flag.BoolVar(&reload, "reload", false, "Send reload request - Pragma: no-cache.")
+	flag.BoolVar(&reload, "R", false, "Send reload request - Pragma: no-cache.")
+
+	flag.Parse()
+
+	if help {
+		fmt.Println("help")
+		os.Exit(0)
+	}
+	if appVersion {
+		fmt.Printf("version: %s\n", AppVersion)
+		os.Exit(0)
+	}
+
+	var httpVersion = HTTP
+	if http2 {
+		httpVersion = HTTP2
+	}
+	var httpMethod = GET
+	if getMethod {
+		httpMethod = GET
+	} else if headMethod {
+		httpMethod = HEAD
+	} else if optionMethod {
+		httpMethod = OPTION
+	} else if traceMethod {
+		httpMethod = TRACE
+	}
+
+	cmdArgs = CmdArgs{
+		URL:         url,
+		Time:        time.Second * time.Duration(runTime),
+		Proxy:       proxy,
+		Clients:     clients,
+		HTTPVersion: httpVersion,
+		HTTPMethod:  httpMethod,
+		Force:       force,
+		Reload:      reload,
+	}
+	fmt.Println(cmdArgs)
 	return
+}
+
+func checkURL(url string) bool {
+	return true
 }
 
 const (
