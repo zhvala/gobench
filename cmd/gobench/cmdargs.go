@@ -1,3 +1,17 @@
+// Copyright 2017 zhvala
+//
+// Licensed under the Apache License, Version 2.0 (the "License"): you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations
+// under the License.
+
 package main
 
 import (
@@ -34,6 +48,28 @@ type CmdArgs struct {
 	Reload bool
 }
 
+func (cmdArgs CmdArgs) String() (str string) {
+	str = fmt.Sprintf("%s %s, currency %d, run %s", cmdArgs.HTTPMethod, cmdArgs.URL, cmdArgs.Clients, cmdArgs.Time)
+	if cmdArgs.HTTPVersion == HTTP2 {
+		str += fmt.Sprintf(", HTTP/2.0")
+	}
+	if cmdArgs.Force {
+		str += fmt.Sprintf(", early socket close")
+	}
+	if cmdArgs.Reload {
+		str += fmt.Sprintf(", disable cache")
+	}
+	if cmdArgs.Proxy != "" {
+		str += fmt.Sprintf(", proxy: %s", cmdArgs.Proxy)
+	}
+	return
+}
+
+func checkURL(url string) bool {
+	// Todo
+	return true
+}
+
 // ParseCmdArgs 从命令行读取参数
 // ParseCmdArgs paser args from cmd
 func ParseCmdArgs() (cmdArgs CmdArgs) {
@@ -46,52 +82,41 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		panic("")
 	}
 
-	// Help, show help info 是否显示帮助信息
-	var help bool
-	flag.BoolVar(&help, "help", false, "This information.")
-	flag.BoolVar(&help, "H", false, "This information.")
-	flag.BoolVar(&help, "?", false, "This information.")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "gobench(v%s) [option]... URL:\n", AppVersion)
+		flag.PrintDefaults()
+	}
+
 	// AppVersion, show app version 显示软件版本
 	var appVersion bool
 	flag.BoolVar(&appVersion, "version", false, "Display program version.")
-	flag.BoolVar(&appVersion, "V", false, "Display program version.")
 
 	var clients int
-	flag.IntVar(&clients, "client", 1, "Run <n> HTTP clients at once. Default 1.")
-	flag.IntVar(&clients, "C", 1, "Run <n> HTTP clients at once. Default 1.")
+	flag.IntVar(&clients, "client", 1, "Run <n> HTTP clients at once.")
 
 	var runTime int
-	flag.IntVar(&runTime, "time", 60, "Run gobench for <sec> seconds. Default 60.")
-	flag.IntVar(&runTime, "T", 60, "Run gobench for <sec> seconds. Default 60.")
+	flag.IntVar(&runTime, "time", 60, "Run gobench for <sec> seconds.")
 
 	var http2 bool
 	flag.BoolVar(&http2, "http2", false, "Use HTTP/2.0 protocol.")
-	flag.BoolVar(&http2, "H2", false, "Use HTTP/2.0 protocol.")
 
 	var proxy string
 	flag.StringVar(&proxy, "proxy", "", "Use proxy server for request. <host:port>.")
-	flag.StringVar(&proxy, "P", "", "Use proxy server for request. <host:port>.")
 
 	var getMethod, headMethod, optionMethod, traceMethod bool
-	flag.BoolVar(&getMethod, "get", false, "Use GET request method.")
+	flag.BoolVar(&getMethod, "get", false, "Use GET(default) request method.")
 	flag.BoolVar(&headMethod, "head", false, "Use HEAD request method.")
 	flag.BoolVar(&optionMethod, "option", false, "Use OPTIONS request method.")
 	flag.BoolVar(&traceMethod, "trace", false, "Use TRACE request method.")
 
 	var force, reload bool
 	flag.BoolVar(&force, "force", false, "Don't wait for reply from server.")
-	flag.BoolVar(&force, "F", false, "Don't wait for reply from server.")
 	flag.BoolVar(&reload, "reload", false, "Send reload request - Pragma: no-cache.")
-	flag.BoolVar(&reload, "R", false, "Send reload request - Pragma: no-cache.")
 
 	flag.Parse()
 
-	if help {
-		fmt.Println("help")
-		os.Exit(0)
-	}
 	if appVersion {
-		fmt.Printf("version: %s\n", AppVersion)
+		fmt.Printf("gobench version %s\n", AppVersion)
 		os.Exit(0)
 	}
 
@@ -120,18 +145,8 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		Force:       force,
 		Reload:      reload,
 	}
-	fmt.Println(cmdArgs)
 	return
 }
-
-func checkURL(url string) bool {
-	return true
-}
-
-const (
-	// AppVersion gobench version
-	AppVersion = "version 1.0"
-)
 
 // HTTP Method supported
 const (

@@ -1,3 +1,17 @@
+// Copyright 2017 zhvala
+//
+// Licensed under the Apache License, Version 2.0 (the "License"): you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations
+// under the License.
+
 package main
 
 import (
@@ -5,16 +19,21 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"sync"
+	"time"
 
 	"golang.org/x/net/http2"
 )
 
 //ClientPool contains a amount of clients, each client runs in a goroutine
 type ClientPool struct {
-	tasks chan *Task
-	size  int
-	wg    sync.WaitGroup
+	taskChan   chan *Task
+	resultChan chan Result
+	taskWg     sync.WaitGroup
+	resultWg   sync.WaitGroup
+	resultsSum []Result
+	startTime  time.Time
 }
 
 //CreateClientPool create a client pool, retuen its pointer
@@ -23,31 +42,93 @@ func CreateClientPool(clientNum int) *ClientPool {
 		panic("invalid client num")
 	}
 	pool := ClientPool{
-		tasks: make(chan *Task),
-		size:  clientNum,
+		taskChan:   make(chan *Task),
+		resultChan: make(chan Result),
+		startTime:  time.Now(),
 	}
+
+	go func() {
+		for result := range pool.resultChan {
+			defer pool.resultWg.Done()
+			pool.resultsSum = append(pool.resultsSum, result)
+		}
+	}()
+
 	for i := 0; i < clientNum; i++ {
-		pool.wg.Add(1)
+		pool.taskWg.Add(1)
 		go func() {
-			defer pool.wg.Done()
+			defer pool.taskWg.Done()
 			client := &Client{}
-			for task := range pool.tasks {
-				client.Process(task)
+			for task := range pool.taskChan {
+				pool.resultChan <- client.Process(task)
+				pool.resultWg.Add(1)
 			}
 		}()
 	}
 	return &pool
 }
 
-// Run put a task into tasks queue
+// Run put a task into taskChan queue
 func (pool *ClientPool) Run(task *Task) {
-	pool.tasks <- task
+	pool.taskChan <- task
 }
 
-// Close close tasks queue
+// Close close taskChan queue
 func (pool *ClientPool) Close() {
-	close(pool.tasks)
-	pool.wg.Wait()
+	close(pool.taskChan)
+	pool.taskWg.Wait()
+	close(pool.resultChan)
+	pool.resultWg.Wait()
+}
+
+// ShowResult show result of all taskChan
+func (pool *ClientPool) ShowResult() {
+	costSecs := time.Now().Sub(pool.startTime)
+	var recvSizeSum int64
+	var successNum int
+	var totalCost time.Duration
+	maxCost := time.Duration(-1 << 63)
+	minCost := time.Duration(1<<63 - 1)
+	statusMap := make(map[int]int)
+	for _, result := range pool.resultsSum {
+		if result.Success {
+			successNum++
+			if _, ok := statusMap[result.StatusCode]; ok {
+				statusMap[result.StatusCode]++
+			} else {
+				statusMap[result.StatusCode] = 1
+			}
+			recvSizeSum += result.RecvSize
+			totalCost += result.TimeCost
+			if result.TimeCost > maxCost {
+				maxCost = result.TimeCost
+			} else if result.TimeCost < minCost {
+				minCost = result.TimeCost
+			}
+		} else {
+			if _, ok := statusMap[result.StatusCode]; ok {
+				statusMap[result.StatusCode]++
+			} else {
+				statusMap[result.StatusCode] = 1
+			}
+		}
+	}
+
+	totalReq := len(pool.resultsSum)
+	avarReq := totalReq / int(costSecs/time.Second)
+	avarBytes := recvSizeSum / int64(costSecs/time.Second)
+	fmt.Fprintf(os.Stderr, "Request %d times, total cost %s, avarage: %d request/second, ", totalReq, costSecs, avarReq)
+	if avarBytes > 0 {
+		fmt.Fprintf(os.Stderr, "%d bytes/second.\n", avarBytes)
+	} else {
+		fmt.Fprintf(os.Stderr, "\n")
+	}
+	fmt.Fprintf(os.Stderr, "Request success %d times, failed %d times, details:\n", successNum, totalReq-successNum)
+	for status, num := range statusMap {
+		fmt.Fprintf(os.Stderr, "*status code: %d, %d times\n", status, num)
+	}
+	avarCost := totalCost / time.Duration(totalReq)
+	fmt.Fprintf(os.Stderr, "Response cost max: %s, mix: %s, avarage: %s.\n", maxCost, minCost, avarCost)
 }
 
 // Client http client
@@ -55,10 +136,26 @@ type Client struct {
 }
 
 // Process do http request
-func (client *Client) Process(task *Task) {
+func (client *Client) Process(task *Task) (result Result) {
 	if task.HTTPVersion != HTTP && task.HTTPVersion != HTTP2 {
 		return
 	}
+	success := false
+	start := time.Now()
+	statusCode := -1
+	recvSize := int64(0)
+
+	defer func() {
+		end := time.Now()
+		timeCost := end.Sub(start)
+		result = Result{
+			Success:    success,
+			StatusCode: statusCode,
+			RecvSize:   recvSize,
+			TimeCost:   timeCost,
+		}
+	}()
+
 	var httpCli *http.Client
 	if task.HTTPVersion == HTTP2 {
 		transport := &http2.Transport{
@@ -80,6 +177,7 @@ func (client *Client) Process(task *Task) {
 			Timeout: task.Timeout,
 		}
 	}
+
 	req, err := http.NewRequest(task.HTTPMethod, task.URL, nil)
 	if err != nil {
 		return
@@ -88,5 +186,17 @@ func (client *Client) Process(task *Task) {
 	if err != nil {
 		return
 	}
-	fmt.Println(rep.Status)
+
+	success = true
+	statusCode = rep.StatusCode
+	recvSize = rep.ContentLength
+	return
+}
+
+// Result store task result
+type Result struct {
+	Success    bool
+	StatusCode int
+	RecvSize   int64
+	TimeCost   time.Duration
 }
