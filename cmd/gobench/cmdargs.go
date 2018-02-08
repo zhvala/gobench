@@ -83,7 +83,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	}
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "gobench(v%s) [option]... URL:\n", AppVersion)
+		fmt.Fprintf(os.Stderr, "gobench [option]... URL:\n\n")
 		flag.PrintDefaults()
 	}
 
