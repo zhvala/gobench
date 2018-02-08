@@ -15,10 +15,9 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
-	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -137,7 +136,7 @@ type Client struct {
 
 // Process do http request
 func (client *Client) Process(task *Task) (result Result) {
-	if task.HTTPVersion != HTTP && task.HTTPVersion != HTTP2 {
+	if task == nil || (task.HTTPVersion != HTTP && task.HTTPVersion != HTTP2) {
 		return
 	}
 	success := false
@@ -157,25 +156,25 @@ func (client *Client) Process(task *Task) (result Result) {
 	}()
 
 	var httpCli *http.Client
+
+	proxyFunc := (func(*http.Request) (*url.URL, error))(nil)
+	if task.Proxy != "" {
+		proxyFunc = func(*http.Request) (*url.URL, error) {
+			return url.Parse(task.Proxy)
+		}
+	}
+
+	transport := &http.Transport{
+		Proxy: proxyFunc,
+	}
+
 	if task.HTTPVersion == HTTP2 {
-		transport := &http2.Transport{
-			AllowHTTP: false, // Allow unsafe connection 允许非加密的链接
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-				NextProtos:         []string{"h2"},
-			},
-			DialTLS: func(netw, addr string, cfg *tls.Config) (net.Conn, error) {
-				return tls.Dial(netw, addr, cfg)
-			},
-		}
-		httpCli = &http.Client{
-			Timeout:   task.Timeout,
-			Transport: transport,
-		}
-	} else {
-		httpCli = &http.Client{
-			Timeout: task.Timeout,
-		}
+		http2.ConfigureTransport(transport)
+	}
+
+	httpCli = &http.Client{
+		Timeout:   task.Timeout,
+		Transport: transport,
 	}
 
 	req, err := http.NewRequest(task.HTTPMethod, task.URL, nil)
@@ -190,6 +189,7 @@ func (client *Client) Process(task *Task) (result Result) {
 	success = true
 	statusCode = rep.StatusCode
 	recvSize = rep.ContentLength
+	fmt.Println(rep.Proto)
 	return
 }
 

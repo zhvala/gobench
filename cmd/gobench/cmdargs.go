@@ -176,7 +176,8 @@ type Task struct {
 	URL         string
 	HTTPVersion int
 	HTTPMethod  string
-	HTTPHeader  map[string]string
+	HTTPHeader  map[string]string // Todo, support more parameters
+	Proxy       string
 	Timeout     time.Duration
 }
 
@@ -195,6 +196,7 @@ func CreateTask(cmdArgs CmdArgs) (task *Task) {
 		HTTPVersion: cmdArgs.HTTPVersion,
 		HTTPMethod:  cmdArgs.HTTPMethod,
 		HTTPHeader:  header,
+		Proxy:       cmdArgs.Proxy,
 		Timeout:     timeout,
 	}
 	return
