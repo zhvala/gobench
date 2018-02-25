@@ -22,10 +22,6 @@ import (
 )
 
 // supports GET|HEAD|OPTION|TRACE
-var (
-	// UsageInfo cmd args usage info
-	UsageInfo = map[string][]interface{}{}
-)
 
 // CmdArgs 接收命令行参数
 // CmdArgs store cmd args
@@ -42,8 +38,6 @@ type CmdArgs struct {
 	HTTPVersion int
 	// HTTP Method, HTTP方法 GET HEAD OPTION TRACE
 	HTTPMethod string
-	// Force, don't wait reply from server 不需要等待服务器的回复
-	Force bool
 	// Reload, sent reload request 发生重新加载请求
 	Reload bool
 }
@@ -52,9 +46,6 @@ func (cmdArgs CmdArgs) String() (str string) {
 	str = fmt.Sprintf("%s %s, currency %d, run %s", cmdArgs.HTTPMethod, cmdArgs.URL, cmdArgs.Clients, cmdArgs.Time)
 	if cmdArgs.HTTPVersion == HTTP2 {
 		str += fmt.Sprintf(", HTTP/2.0")
-	}
-	if cmdArgs.Force {
-		str += fmt.Sprintf(", early socket close")
 	}
 	if cmdArgs.Reload {
 		str += fmt.Sprintf(", disable cache")
@@ -109,8 +100,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.BoolVar(&optionMethod, "option", false, "Use OPTIONS request method.")
 	flag.BoolVar(&traceMethod, "trace", false, "Use TRACE request method.")
 
-	var force, reload bool
-	flag.BoolVar(&force, "force", false, "Don't wait for reply from server.")
+	var reload bool
 	flag.BoolVar(&reload, "reload", false, "Send reload request - Pragma: no-cache.")
 
 	flag.Parse()
@@ -142,34 +132,10 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		Clients:     clients,
 		HTTPVersion: httpVersion,
 		HTTPMethod:  httpMethod,
-		Force:       force,
 		Reload:      reload,
 	}
 	return
 }
-
-// HTTP Method supported
-const (
-	// GET HTTP GET
-	GET = "GET"
-	// HEAD HTTP HEAD
-	HEAD = "HEAD"
-	// OPTION HTTP OPTION
-	OPTION = "OPTION"
-	// TRACE HTTP TRACE
-	TRACE = "TRACE"
-)
-
-const (
-	// HTTP http1.1 is used as a default version in golang http.client
-	HTTP = iota
-	// HTTP2 http2
-	HTTP2
-)
-
-const (
-	cDefaultTimeout = time.Second
-)
 
 // Task struct
 type Task struct {
@@ -183,10 +149,10 @@ type Task struct {
 
 // CreateTask create a task from given cmd args
 func CreateTask(cmdArgs CmdArgs) (task *Task) {
-	timeout := time.Duration(0)
-	if !cmdArgs.Force {
-		timeout = cDefaultTimeout
-	}
+	timeout := cDefaultTimeout
+	// if !cmdArgs.Timeout != cTimeMax {
+	// 	timeout = cmdArgs.Timeout
+	// }
 	header := make(map[string]string)
 	if cmdArgs.Reload {
 		header["Pragma"] = "no-cache"

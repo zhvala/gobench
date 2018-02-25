@@ -86,8 +86,8 @@ func (pool *ClientPool) ShowResult() {
 	var recvSizeSum int64
 	var successNum int
 	var totalCost time.Duration
-	maxCost := time.Duration(-1 << 63)
-	minCost := time.Duration(1<<63 - 1)
+	maxCost := cTimeMin
+	minCost := cTimeMax
 	statusMap := make(map[int]int)
 	for _, result := range pool.resultsSum {
 		if result.Success {

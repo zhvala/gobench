@@ -22,13 +22,6 @@ import (
 	"time"
 )
 
-const (
-	// AppVersion gobench version
-	AppVersion = "1.0"
-	// Copyright copyright info
-	Copyright = "Copyright (c) zhvala 2017-2018, Apache 2.0 Open Source Software."
-)
-
 func main() {
 	fmt.Fprintf(os.Stderr, "Gobench - simple web benchmark wrote - version %s\n", AppVersion)
 	fmt.Fprintln(os.Stderr, Copyright)
