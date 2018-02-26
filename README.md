@@ -16,8 +16,6 @@ gobench [option]... URL:
 
   -client int
     	Run <n> HTTP clients at once. (default 1)
-  -force
-    	Don't wait for reply from server.
   -get
     	Use GET(default) request method.
   -head
