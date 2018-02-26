@@ -89,7 +89,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.IntVar(&runTime, "time", 60, "Run gobench for <sec> seconds.")
 
 	var http2 bool
-	flag.BoolVar(&http2, "http2", false, "Use HTTP/2.0 protocol.")
+	flag.BoolVar(&http2, "http2", false, "Use HTTP2 protocol.")
 
 	var proxy string
 	flag.StringVar(&proxy, "proxy", "", "Use proxy server for request. <host:port>.")
