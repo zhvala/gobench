@@ -21,7 +21,7 @@ import (
 // Program info
 const (
 	// AppVersion gobench version
-	AppVersion = "1.01"
+	AppVersion = "1.02"
 	// Copyright copyright info
 	Copyright = "Copyright (c) zhvala 2017-2018, Apache 2.0 Open Source Software."
 )
@@ -43,6 +43,13 @@ const (
 	HTTP = iota
 	// HTTP2 http2
 	HTTP2
+)
+
+const (
+	// HTTPPrefix http url prefix
+	HTTPPrefix = "http://"
+	// HTTPSPrefix https url prefix
+	HTTPSPrefix = "http://"
 )
 
 // Time value

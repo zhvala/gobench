@@ -22,8 +22,15 @@ import (
 	"time"
 )
 
+func globalPanicHandle() {
+	if err := recover(); err != nil {
+		fmt.Fprintf(os.Stderr, "program terminate, error: %s.\n", err)
+	}
+}
+
 func main() {
-	fmt.Fprintf(os.Stderr, "Gobench - simple web benchmark wrote - version %s\n", AppVersion)
+	defer globalPanicHandle()
+	fmt.Fprintf(os.Stderr, "Gobench - simple web benchmark - version %s\n", AppVersion)
 	fmt.Fprintln(os.Stderr, Copyright)
 	fmt.Fprintf(os.Stderr, "\n")
 	// get cmd args

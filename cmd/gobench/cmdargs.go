@@ -17,7 +17,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -56,8 +58,27 @@ func (cmdArgs CmdArgs) String() (str string) {
 	return
 }
 
-func checkURL(url string) bool {
-	// Todo
+func checkTargetURL(task *Task) {
+	if !strings.HasPrefix(task.URL, HTTPPrefix) && !strings.HasPrefix(task.URL, HTTPSPrefix) {
+		if HTTP2 == task.HTTPVersion {
+			task.URL += HTTPSPrefix
+		} else {
+			task.URL += HTTPPrefix
+		}
+	} else if strings.HasPrefix(task.URL, HTTPPrefix) {
+		if HTTP2 == task.HTTPVersion {
+			panic("http2 only support https")
+		}
+	}
+	if !checkURL(task.URL) {
+		panic("invalid target url")
+	}
+}
+
+func checkURL(str string) bool {
+	if _, err := url.ParseRequestURI(str); err != nil {
+		return false
+	}
 	return true
 }
 
@@ -69,9 +90,6 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		panic("gobench need at least one parameter")
 	}
 	url := os.Args[argc-1]
-	if !checkURL(url) {
-		panic("")
-	}
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "gobench [option]... URL:\n\n")
@@ -123,6 +141,12 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		httpMethod = OPTION
 	} else if traceMethod {
 		httpMethod = TRACE
+	}
+
+	if proxy != "" {
+		if !checkURL(proxy) {
+			panic("invalid proxy url")
+		}
 	}
 
 	cmdArgs = CmdArgs{

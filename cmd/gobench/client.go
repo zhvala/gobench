@@ -189,7 +189,7 @@ func (client *Client) Process(task *Task) (result Result) {
 	success = true
 	statusCode = rep.StatusCode
 	recvSize = rep.ContentLength
-	fmt.Println(rep.Proto)
+	// fmt.Println(rep.Proto)
 	return
 }
 
