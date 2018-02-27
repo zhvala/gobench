@@ -1,12 +1,15 @@
-# gobench
+# Gobench
 
-`gobench` is a simple web benchmark wrote by `golang`.
+
+![Scrutinizer Build](https://img.shields.io/scrutinizer/build/g/filp/whoops.svg)![Go Report Card](https://goreportcard.com/badge/github.com/zhvala/gobench)![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)
+`Gobench` is a simple web benchmark written in `golang`.
 
 ## Installation
 
 ```bash
 go get -u github.com/zhvala/gobench/cmd/gobench
-# PS: adding $GOPATH/bin into your $PATH may be needed
+# adding $GOPATH/bin into your $PATH may be needed
+export PATH=$GOPATH/bin:$PATH
 ```
 
 ## Usage
