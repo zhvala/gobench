@@ -65,7 +65,10 @@ LOOP:
 			counter++
 			if counter >= cmdArgs.Clients {
 				counter = 0
-				time.Sleep(time.Second)
+				if cmdArgs.Interval >= 0 {
+					interval := time.Duration(cmdArgs.Interval) * time.Millisecond
+					time.Sleep(interval)
+				}
 			}
 		}
 	}

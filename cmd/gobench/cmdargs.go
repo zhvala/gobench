@@ -23,31 +23,52 @@ import (
 	"time"
 )
 
-// supports GET|HEAD|OPTION|TRACE
-
-// CmdArgs 接收命令行参数
 // CmdArgs store cmd args
+// CmdArgs 命令行参数
 type CmdArgs struct {
-	// URL target url
+	// URL
+	// target url
+	// 目标地址
 	URL string
-	// Time duration 运行时间
+	// Time
+	// duration
+	// 运行时间
 	Time time.Duration
-	// Proxy use proxy 使用代理
+	// Proxy
+	// proxy url
+	// 代理地址
 	Proxy string
-	// Clients, concurrent clients 并发数
+	// Clients
+	// concurrent clients
+	// 并发数
 	Clients int
-	// HTTP Version, HTTP协议版本 HTTP1.0 HTTP1.1 HTTP2.0
+	// HTTPVersion
+	// HTTP version, supports HTTP1.1 HTTP2
+	// HTTP协议版本, 支持 HTTP1.1 HTTP2
 	HTTPVersion int
-	// HTTP Method, HTTP方法 GET HEAD OPTION TRACE
+	// HTTPMethod
+	// HTTP method, supports GET HEAD OPTION TRACE
+	// HTTP方法, 支持 GET HEAD OPTION TRACE
 	HTTPMethod string
-	// Reload, sent reload request 发生重新加载请求
+	// Reload
+	// sent reload request, no-cache
+	// 发生重新加载请求, 禁用缓存
 	Reload bool
+	// Interval
+	// interval between each request of every client, millisecond, default no interval
+	// 客户端发送请求的间隔，单位为毫秒, 默认没有间隔
+	Interval int
 }
 
 func (cmdArgs CmdArgs) String() (str string) {
 	str = fmt.Sprintf("%s %s, currency %d, run %s", cmdArgs.HTTPMethod, cmdArgs.URL, cmdArgs.Clients, cmdArgs.Time)
+	if cmdArgs.Interval != 0 {
+		str += fmt.Sprintf(", request interval %dms", cmdArgs.Interval)
+	} else {
+		str += fmt.Sprintf(", no request interval")
+	}
 	if cmdArgs.HTTPVersion == HTTP2 {
-		str += fmt.Sprintf(", HTTP/2.0")
+		str += fmt.Sprintf(", HTTP2")
 	}
 	if cmdArgs.Reload {
 		str += fmt.Sprintf(", disable cache")
@@ -110,7 +131,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.BoolVar(&http2, "http2", false, "Use HTTP2 protocol.")
 
 	var proxy string
-	flag.StringVar(&proxy, "proxy", "", "Use proxy server for request. <host:port>.")
+	flag.StringVar(&proxy, "proxy", "", "Use proxy. <host:port>.")
 
 	var getMethod, headMethod, optionMethod, traceMethod bool
 	flag.BoolVar(&getMethod, "get", false, "Use GET(default) request method.")
@@ -121,6 +142,8 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	var reload bool
 	flag.BoolVar(&reload, "reload", false, "Send reload request - Pragma: no-cache.")
 
+	var interval int
+	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client.")
 	flag.Parse()
 
 	if appVersion {
