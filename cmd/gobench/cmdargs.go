@@ -131,7 +131,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.BoolVar(&http2, "http2", false, "Use HTTP2 protocol.")
 
 	var proxy string
-	flag.StringVar(&proxy, "proxy", "", "Use proxy. <host:port>.")
+	flag.StringVar(&proxy, "proxy", "", "Use proxy server for request. <host:port>.")
 
 	var getMethod, headMethod, optionMethod, traceMethod bool
 	flag.BoolVar(&getMethod, "get", false, "Use GET(default) request method.")
@@ -143,7 +143,8 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.BoolVar(&reload, "reload", false, "Send reload request - Pragma: no-cache.")
 
 	var interval int
-	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client.")
+	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client <millisecond>.")
+
 	flag.Parse()
 
 	if appVersion {

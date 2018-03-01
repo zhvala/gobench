@@ -24,7 +24,9 @@ gobench [option]... URL:
   -head
     	Use HEAD request method.
   -http2
-    	Use HTTP/2.0 protocol.
+    	Use HTTP2 protocol.
+  -interval int
+    	Interval between each request of every client <millisecond>.
   -option
     	Use OPTIONS request method.
   -proxy string
@@ -36,7 +38,7 @@ gobench [option]... URL:
   -trace
     	Use TRACE request method.
   -version
-    	Display program version.
+    	Display program version..
 ```
 
 ## To do
