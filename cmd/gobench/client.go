@@ -185,6 +185,7 @@ func (client *Client) Process(task *Task) (result Result) {
 	if err != nil {
 		return
 	}
+	defer rep.Body.Close()
 
 	success = true
 	statusCode = rep.StatusCode
