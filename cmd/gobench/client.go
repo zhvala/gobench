@@ -16,12 +16,16 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
+	socks5 "github.com/zhvala/gosocks5"
 	"golang.org/x/net/http2"
 )
 
@@ -139,6 +143,7 @@ func (client *Client) Process(task *Task) (result Result) {
 	if task == nil || (task.HTTPVersion != HTTP && task.HTTPVersion != HTTP2) {
 		return
 	}
+
 	success := false
 	start := time.Now()
 	statusCode := -1
@@ -158,13 +163,21 @@ func (client *Client) Process(task *Task) (result Result) {
 	var httpCli *http.Client
 
 	proxyFunc := (func(*http.Request) (*url.URL, error))(nil)
+	dialFunc := net.Dial
 	if task.Proxy != "" {
 		proxyFunc = func(*http.Request) (*url.URL, error) {
 			return url.Parse(task.Proxy)
 		}
+	} else if task.SOCKS5 != "" {
+		client := &socks5.Client{
+			Network: "tcp",
+			Addr:    task.SOCKS5,
+		}
+		dialFunc = client.Dial
 	}
 
 	transport := &http.Transport{
+		Dial:  dialFunc,
 		Proxy: proxyFunc,
 	}
 
@@ -177,10 +190,16 @@ func (client *Client) Process(task *Task) (result Result) {
 		Transport: transport,
 	}
 
-	req, err := http.NewRequest(task.HTTPMethod, task.URL, nil)
+	var body io.Reader
+	if task.Data != "" {
+		body = strings.NewReader(task.Data)
+	}
+
+	req, err := http.NewRequest(task.HTTPMethod, task.URL, body)
 	if err != nil {
 		return
 	}
+
 	rep, err := httpCli.Do(req)
 	if err != nil {
 		return

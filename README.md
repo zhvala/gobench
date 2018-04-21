@@ -19,6 +19,8 @@ gobench [option]... URL:
 
   -client int
     	Run <n> HTTP clients at once. (default 1)
+  -data string
+    	Send data only if the method is post.
   -get
     	Use GET(default) request method.
   -head
@@ -29,18 +31,23 @@ gobench [option]... URL:
     	Interval between each request of every client <millisecond>.
   -option
     	Use OPTIONS request method.
+  -post
+    	Use POST request method.
   -proxy string
-    	Use proxy server for request. <host:port>.
+    	Use http/https proxy server for request <host:port>.
   -reload
     	Send reload request - Pragma: no-cache.
+  -socks5 string
+    	Use socks5 proxy server for request <host:port>.
   -time int
     	Run gobench for <sec> seconds. (default 60)
+  -timeout int
+    	Request timeout <millisecond>. (default 1000)
   -trace
     	Use TRACE request method.
   -version
-    	Display program version..
+    	Display program version.
 ```
 
-## To do
-
- Add proxy support (socks, etc).
+## Performance test
+To do

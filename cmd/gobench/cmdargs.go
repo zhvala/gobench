@@ -35,9 +35,13 @@ type CmdArgs struct {
 	// 运行时间
 	Time time.Duration
 	// Proxy
-	// proxy url
-	// 代理地址
+	// http/https proxy address
+	// http/https代理地址
 	Proxy string
+	// SOCKS5
+	// socks5 proxy address
+	// socks5 代理地址
+	SOCKS5 string
 	// Clients
 	// concurrent clients
 	// 并发数
@@ -50,31 +54,51 @@ type CmdArgs struct {
 	// HTTP method, supports GET HEAD OPTION TRACE
 	// HTTP方法, 支持 GET HEAD OPTION TRACE
 	HTTPMethod string
+	// Data
+	// post data
+	// post数据
+	Data string
 	// Reload
 	// sent reload request, no-cache
 	// 发生重新加载请求, 禁用缓存
 	Reload bool
 	// Interval
 	// interval between each request of every client, millisecond, default no interval
-	// 客户端发送请求的间隔，单位为毫秒, 默认没有间隔
+	// 客户端发送请求的间隔，单位毫秒, 默认没有间隔
 	Interval int
+	// Timeout
+	// timeout of request, millisecond
+	// 请求超时时间, 单位毫秒
+	Timeout int
 }
 
 func (cmdArgs CmdArgs) String() (str string) {
 	str = fmt.Sprintf("%s %s, currency %d, run %s", cmdArgs.HTTPMethod, cmdArgs.URL, cmdArgs.Clients, cmdArgs.Time)
+
 	if cmdArgs.Interval != 0 {
 		str += fmt.Sprintf(", request interval %dms", cmdArgs.Interval)
 	} else {
 		str += fmt.Sprintf(", no request interval")
 	}
+
+	if cmdArgs.Timeout != 0 {
+		str += fmt.Sprintf(", request timeout %dms", cmdArgs.Timeout)
+	}
+
 	if cmdArgs.HTTPVersion == HTTP2 {
 		str += fmt.Sprintf(", HTTP2")
 	}
+
 	if cmdArgs.Reload {
 		str += fmt.Sprintf(", disable cache")
 	}
+
 	if cmdArgs.Proxy != "" {
 		str += fmt.Sprintf(", proxy: %s", cmdArgs.Proxy)
+	}
+
+	if cmdArgs.SOCKS5 != "" {
+		str += fmt.Sprintf(", socks5 proxy: %s", cmdArgs.SOCKS5)
 	}
 	return
 }
@@ -131,19 +155,29 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.BoolVar(&http2, "http2", false, "Use HTTP2 protocol.")
 
 	var proxy string
-	flag.StringVar(&proxy, "proxy", "", "Use proxy server for request. <host:port>.")
+	flag.StringVar(&proxy, "proxy", "", "Use http/https proxy server for request <host:port>.")
 
-	var getMethod, headMethod, optionMethod, traceMethod bool
+	var socks5 string
+	flag.StringVar(&socks5, "socks5", "", "Use socks5 proxy server for request <host:port>.")
+
+	var getMethod, postMethod, headMethod, optionMethod, traceMethod bool
 	flag.BoolVar(&getMethod, "get", false, "Use GET(default) request method.")
+	flag.BoolVar(&postMethod, "post", false, "Use POST request method.")
 	flag.BoolVar(&headMethod, "head", false, "Use HEAD request method.")
 	flag.BoolVar(&optionMethod, "option", false, "Use OPTIONS request method.")
 	flag.BoolVar(&traceMethod, "trace", false, "Use TRACE request method.")
+
+	var data string
+	flag.StringVar(&data, "data", "", "Send data only if the method is post.")
 
 	var reload bool
 	flag.BoolVar(&reload, "reload", false, "Send reload request - Pragma: no-cache.")
 
 	var interval int
 	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client <millisecond>.")
+
+	var timeout int
+	flag.IntVar(&timeout, "timeout", 1000, "Request timeout <millisecond>.")
 
 	flag.Parse()
 
@@ -156,9 +190,12 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	if http2 {
 		httpVersion = HTTP2
 	}
+
 	var httpMethod = GET
 	if getMethod {
 		httpMethod = GET
+	} else if postMethod {
+		httpMethod = POST
 	} else if headMethod {
 		httpMethod = HEAD
 	} else if optionMethod {
@@ -169,18 +206,31 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 
 	if proxy != "" {
 		if !checkURL(proxy) {
-			panic("invalid proxy url")
+			panic("invalid http proxy url")
 		}
+	}
+
+	if socks5 != "" {
+		if !checkURL(socks5) {
+			panic("invalid socks5 proxy url")
+		}
+	}
+
+	if timeout == 0 {
+		timeout = cDefaultTimeout
 	}
 
 	cmdArgs = CmdArgs{
 		URL:         url,
 		Time:        time.Second * time.Duration(runTime),
 		Proxy:       proxy,
+		SOCKS5:      socks5,
 		Clients:     clients,
 		HTTPVersion: httpVersion,
 		HTTPMethod:  httpMethod,
+		Data:        data,
 		Reload:      reload,
+		Timeout:     timeout,
 	}
 	return
 }
@@ -192,15 +242,13 @@ type Task struct {
 	HTTPMethod  string
 	HTTPHeader  map[string]string // Todo, support more parameters
 	Proxy       string
+	SOCKS5      string
+	Data        string
 	Timeout     time.Duration
 }
 
 // CreateTask create a task from given cmd args
 func CreateTask(cmdArgs CmdArgs) (task *Task) {
-	timeout := cDefaultTimeout
-	// if !cmdArgs.Timeout != cTimeMax {
-	// 	timeout = cmdArgs.Timeout
-	// }
 	header := make(map[string]string)
 	if cmdArgs.Reload {
 		header["Pragma"] = "no-cache"
@@ -211,7 +259,9 @@ func CreateTask(cmdArgs CmdArgs) (task *Task) {
 		HTTPMethod:  cmdArgs.HTTPMethod,
 		HTTPHeader:  header,
 		Proxy:       cmdArgs.Proxy,
-		Timeout:     timeout,
+		SOCKS5:      cmdArgs.SOCKS5,
+		Data:        cmdArgs.Data,
+		Timeout:     time.Millisecond * time.Duration(cmdArgs.Timeout),
 	}
 	return
 }
