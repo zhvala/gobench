@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -130,7 +131,7 @@ func (pool *ClientPool) ShowResult() {
 	for status, num := range statusMap {
 		fmt.Fprintf(os.Stderr, "*status code: %d, %d times\n", status, num)
 	}
-	avarCost := totalCost / time.Duration(totalReq)
+	avarCost := totalCost / time.Duration(successNum)
 	fmt.Fprintf(os.Stderr, "Response cost max: %s, mix: %s, avarage: %s.\n", maxCost, minCost, avarCost)
 }
 
@@ -206,10 +207,14 @@ func (client *Client) Process(task *Task) (result Result) {
 	}
 	defer rep.Body.Close()
 
+	data, err := ioutil.ReadAll(rep.Body)
+	if err != nil {
+		return
+	}
+
 	success = true
 	statusCode = rep.StatusCode
-	recvSize = rep.ContentLength
-	// fmt.Println(rep.Proto)
+	recvSize = int64(len(data))
 	return
 }
 

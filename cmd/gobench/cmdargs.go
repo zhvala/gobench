@@ -230,6 +230,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		HTTPMethod:  httpMethod,
 		Data:        data,
 		Reload:      reload,
+		Interval:    interval,
 		Timeout:     timeout,
 	}
 	return

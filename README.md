@@ -2,7 +2,14 @@
 
 ![Scrutinizer Build](https://img.shields.io/scrutinizer/build/g/filp/whoops.svg)![Go Report Card](https://goreportcard.com/badge/github.com/zhvala/gobench)![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)
 
-`Gobench` is a simple web benchmark written in `golang`.
+`Gobench` is a simple web benchmark written in `golang`. It use `goroutine` to simulate concurrent HTTP requests. 
+
+## Feature
+
+- Supports GET, POST, HEAD, OPTION, TRACE
+- Support both HTTP/HTTPS and SOCKS5 proxy
+- Support HTTP/1.1 and HTTP/2
+- High concurrency
 
 ## Installation
 
@@ -49,5 +56,5 @@ gobench [option]... URL:
     	Display program version.
 ```
 
-## Performance test
-To do
+## Author
+zhvala(zhvala@foxmail.com)
