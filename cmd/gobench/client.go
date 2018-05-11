@@ -17,12 +17,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"sync"
 	"time"
 
+	socks5 "github.com/zhvala/gosocks5"
 	"golang.org/x/net/http2"
 )
 
@@ -127,7 +130,7 @@ func (pool *ClientPool) ShowResult() {
 	for status, num := range statusMap {
 		fmt.Fprintf(os.Stderr, "*status code: %d, %d times\n", status, num)
 	}
-	avarCost := totalCost / time.Duration(totalReq)
+	avarCost := totalCost / time.Duration(successNum)
 	fmt.Fprintf(os.Stderr, "Response cost max: %s, mix: %s, avarage: %s.\n", maxCost, minCost, avarCost)
 }
 
@@ -140,6 +143,7 @@ func (client *Client) Process(task *Task) (result Result) {
 	if task == nil || (task.HTTPVersion != HTTP && task.HTTPVersion != HTTP2) {
 		return
 	}
+
 	success := false
 	start := time.Now()
 	statusCode := -1
@@ -159,13 +163,21 @@ func (client *Client) Process(task *Task) (result Result) {
 	var httpCli *http.Client
 
 	proxyFunc := (func(*http.Request) (*url.URL, error))(nil)
+	dialFunc := net.Dial
 	if task.Proxy != "" {
 		proxyFunc = func(*http.Request) (*url.URL, error) {
 			return url.Parse(task.Proxy)
 		}
+	} else if task.SOCKS5 != "" {
+		client := &socks5.Client{
+			Network: "tcp",
+			Addr:    task.SOCKS5,
+		}
+		dialFunc = client.Dial
 	}
 
 	transport := &http.Transport{
+		Dial:  dialFunc,
 		Proxy: proxyFunc,
 	}
 
@@ -201,10 +213,14 @@ func (client *Client) Process(task *Task) (result Result) {
 	}
 	defer rep.Body.Close()
 
+	data, err := ioutil.ReadAll(rep.Body)
+	if err != nil {
+		return
+	}
+
 	success = true
 	statusCode = rep.StatusCode
-	recvSize = rep.ContentLength
-	// fmt.Println(rep.Proto)
+	recvSize = int64(len(data))
 	return
 }
 

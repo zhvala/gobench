@@ -21,7 +21,7 @@ import (
 // Program info
 const (
 	// AppVersion gobench version
-	AppVersion = "1.02"
+	AppVersion = "1.04"
 	// Copyright copyright info
 	Copyright = "Copyright (c) zhvala 2017-2018, Apache 2.0 Open Source Software."
 )
@@ -30,6 +30,8 @@ const (
 const (
 	// GET HTTP GET
 	GET = "GET"
+	// POST HTTP POST
+	POST = "POST"
 	// HEAD HTTP HEAD
 	HEAD = "HEAD"
 	// OPTION HTTP OPTION
@@ -56,5 +58,5 @@ const (
 const (
 	cTimeMax        = time.Duration(1<<63 - 1)
 	cTimeMin        = time.Duration(-1 << 63)
-	cDefaultTimeout = time.Second
+	cDefaultTimeout = 1000 // millisecond
 )
