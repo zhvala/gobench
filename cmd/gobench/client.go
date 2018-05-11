@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -177,10 +178,23 @@ func (client *Client) Process(task *Task) (result Result) {
 		Transport: transport,
 	}
 
+	cx, cancel := context.WithCancel(context.Background())
 	req, err := http.NewRequest(task.HTTPMethod, task.URL, nil)
 	if err != nil {
+		cancel()
 		return
 	}
+	req = req.WithContext(cx)
+
+	if task.Force > time.Duration(0) {
+		go func() {
+			time.Sleep(task.Force)
+			cancel()
+		}()
+	} else {
+		defer cancel()
+	}
+
 	rep, err := httpCli.Do(req)
 	if err != nil {
 		return

@@ -58,6 +58,10 @@ type CmdArgs struct {
 	// interval between each request of every client, millisecond, default no interval
 	// 客户端发送请求的间隔，单位为毫秒, 默认没有间隔
 	Interval int
+	// Force
+	// cancel requests, don't wait response from server after force time
+	// 超过时间不等待服务器回复，强制取消请求
+	Force int
 }
 
 func (cmdArgs CmdArgs) String() (str string) {
@@ -145,6 +149,9 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	var interval int
 	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client <millisecond>.")
 
+	var force int
+	flag.IntVar(&force, "force", 100, "Client will cancel request and not wait response from server after a given time duration <millisecond>.")
+
 	flag.Parse()
 
 	if appVersion {
@@ -181,6 +188,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		HTTPVersion: httpVersion,
 		HTTPMethod:  httpMethod,
 		Reload:      reload,
+		Force:       force,
 	}
 	return
 }
@@ -193,11 +201,13 @@ type Task struct {
 	HTTPHeader  map[string]string // Todo, support more parameters
 	Proxy       string
 	Timeout     time.Duration
+	Force       time.Duration
 }
 
 // CreateTask create a task from given cmd args
 func CreateTask(cmdArgs CmdArgs) (task *Task) {
 	timeout := cDefaultTimeout
+	force := time.Duration(cmdArgs.Force) * time.Millisecond
 	// if !cmdArgs.Timeout != cTimeMax {
 	// 	timeout = cmdArgs.Timeout
 	// }
@@ -212,6 +222,7 @@ func CreateTask(cmdArgs CmdArgs) (task *Task) {
 		HTTPHeader:  header,
 		Proxy:       cmdArgs.Proxy,
 		Timeout:     timeout,
+		Force:       force,
 	}
 	return
 }
