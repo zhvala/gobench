@@ -161,7 +161,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client <millisecond>.")
 
 	var force int
-	flag.IntVar(&force, "force", 0, "Client will cancel request and not wait response from server after a given time duration <millisecond>.")
+	flag.IntVar(&force, "force", 0, "Client will cancel request and not wait response from server after given duration <millisecond>.")
 
 	var timeout int
 	flag.IntVar(&timeout, "timeout", 1000, "Request timeout <millisecond>.")

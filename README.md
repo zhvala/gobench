@@ -28,6 +28,8 @@ gobench [option]... URL:
     	Run <n> HTTP clients at once. (default 1)
   -data string
     	Send data only if the method is post.
+  -force int
+    	Client will cancel request and not wait response from server after a given time duration <millisecond>.
   -get
     	Use GET(default) request method.
   -head
