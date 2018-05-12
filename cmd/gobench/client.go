@@ -130,8 +130,10 @@ func (pool *ClientPool) ShowResult() {
 	for status, num := range statusMap {
 		fmt.Fprintf(os.Stderr, "*status code: %d, %d times\n", status, num)
 	}
-	avarCost := totalCost / time.Duration(successNum)
-	fmt.Fprintf(os.Stderr, "Response cost max: %s, mix: %s, avarage: %s.\n", maxCost, minCost, avarCost)
+	if successNum > 0 {
+		avarCost := totalCost / time.Duration(successNum)
+		fmt.Fprintf(os.Stderr, "Response cost max: %s, mix: %s, avarage: %s.\n", maxCost, minCost, avarCost)
+	}
 }
 
 // Client http client

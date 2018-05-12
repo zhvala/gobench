@@ -17,7 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/url"
+	uri "net/url"
 	"os"
 	"strings"
 	"time"
@@ -89,6 +89,10 @@ func (cmdArgs CmdArgs) String() (str string) {
 		str += fmt.Sprintf(", request timeout %dms", cmdArgs.Timeout)
 	}
 
+	if cmdArgs.Force != 0 {
+		str += fmt.Sprintf(", force cancel request after %dms", cmdArgs.Force)
+	}
+
 	if cmdArgs.HTTPVersion == HTTP2 {
 		str += fmt.Sprintf(", HTTP2")
 	}
@@ -105,30 +109,6 @@ func (cmdArgs CmdArgs) String() (str string) {
 		str += fmt.Sprintf(", socks5 proxy: %s", cmdArgs.SOCKS5)
 	}
 	return
-}
-
-func checkTargetURL(task *Task) {
-	if !strings.HasPrefix(task.URL, HTTPPrefix) && !strings.HasPrefix(task.URL, HTTPSPrefix) {
-		if HTTP2 == task.HTTPVersion {
-			task.URL += HTTPSPrefix
-		} else {
-			task.URL += HTTPPrefix
-		}
-	} else if strings.HasPrefix(task.URL, HTTPPrefix) {
-		if HTTP2 == task.HTTPVersion {
-			panic("http2 only support https")
-		}
-	}
-	if !checkURL(task.URL) {
-		panic("invalid target url")
-	}
-}
-
-func checkURL(str string) bool {
-	if _, err := url.ParseRequestURI(str); err != nil {
-		return false
-	}
-	return true
 }
 
 // ParseCmdArgs 从命令行读取参数
@@ -181,7 +161,7 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client <millisecond>.")
 
 	var force int
-	flag.IntVar(&force, "force", 100, "Client will cancel request and not wait response from server after a given time duration <millisecond>.")
+	flag.IntVar(&force, "force", 0, "Client will cancel request and not wait response from server after a given time duration <millisecond>.")
 
 	var timeout int
 	flag.IntVar(&timeout, "timeout", 1000, "Request timeout <millisecond>.")
@@ -211,14 +191,30 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		httpMethod = TRACE
 	}
 
+	if !strings.HasPrefix(url, HTTPPrefix) && !strings.HasPrefix(url, HTTPSPrefix) {
+		if http2 {
+			url = HTTPSPrefix + url
+		} else {
+			url = HTTPPrefix + url
+		}
+	} else if strings.HasPrefix(url, HTTPPrefix) {
+		if http2 {
+			panic("http2 only support https")
+		}
+	}
+
+	if _, err := uri.ParseRequestURI(url); err != nil {
+		panic("invalid target url")
+	}
+
 	if proxy != "" {
-		if !checkURL(proxy) {
+		if _, err := uri.ParseRequestURI(proxy); err != nil {
 			panic("invalid http proxy url")
 		}
 	}
 
 	if socks5 != "" {
-		if !checkURL(socks5) {
+		if _, err := uri.ParseRequestURI(socks5); err != nil {
 			panic("invalid socks5 proxy url")
 		}
 	}
