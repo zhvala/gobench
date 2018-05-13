@@ -29,7 +29,7 @@ gobench [option]... URL:
   -data string
     	Send data only if the method is post.
   -force int
-    	Client will cancel request and not wait response from server after a given time duration <millisecond>.
+    	Client will cancel request and not wait response from server after given duration <millisecond>.
   -get
     	Use GET(default) request method.
   -head
