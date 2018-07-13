@@ -1,5 +1,4 @@
 // Copyright 2017-2018 zhvala
-//
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
 // a copy of the License at
@@ -26,10 +25,10 @@ import (
 // CmdArgs store cmd args
 // CmdArgs 命令行参数
 type CmdArgs struct {
-	// URL
+	// Target
 	// target url
 	// 目标地址
-	URL string
+	Target string
 	// Time
 	// duration
 	// 运行时间
@@ -42,18 +41,18 @@ type CmdArgs struct {
 	// socks5 proxy address
 	// socks5 代理地址
 	SOCKS5 string
-	// Clients
-	// concurrent clients
-	// 并发数
-	Clients int
-	// HTTPVersion
+	// Thread
+	// concurrent thread
+	// 并发线程数
+	Thread int
+	// Version
 	// HTTP version, supports HTTP1.1 HTTP2
 	// HTTP协议版本, 支持 HTTP1.1 HTTP2
-	HTTPVersion int
-	// HTTPMethod
+	Version int
+	// Method
 	// HTTP method, supports GET HEAD OPTION TRACE
 	// HTTP方法, 支持 GET HEAD OPTION TRACE
-	HTTPMethod string
+	Method string
 	// Data
 	// post data
 	// post数据
@@ -63,37 +62,31 @@ type CmdArgs struct {
 	// 发生重新加载请求, 禁用缓存
 	Reload bool
 	// Interval
-	// interval between each request of every client, millisecond, default no interval
+	// interval between each request of every thread, millisecond, default no interval
 	// 客户端发送请求的间隔，单位毫秒, 默认没有间隔
-	Interval int
-	// Force
-	// cancel requests, don't wait response from server after force time
-	// 超过时间不等待服务器回复，强制取消请求
-	Force int
+	Interval time.Duration
 	// Timeout
 	// timeout of request, millisecond
 	// 请求超时时间, 单位毫秒
-	Timeout int
+	Timeout time.Duration
 }
 
 func (cmdArgs CmdArgs) String() (str string) {
-	str = fmt.Sprintf("%s %s, currency %d, run %s", cmdArgs.HTTPMethod, cmdArgs.URL, cmdArgs.Clients, cmdArgs.Time)
+	str = fmt.Sprintf("%s %s, currency thread %d, for %s",
+		cmdArgs.Method, cmdArgs.Target,
+		cmdArgs.Thread, cmdArgs.Time)
 
 	if cmdArgs.Interval != 0 {
-		str += fmt.Sprintf(", request interval %dms", cmdArgs.Interval)
+		str += fmt.Sprintf(", with %dms interval", cmdArgs.Interval)
 	} else {
-		str += fmt.Sprintf(", no request interval")
+		str += fmt.Sprintf(", with no interval")
 	}
 
 	if cmdArgs.Timeout != 0 {
 		str += fmt.Sprintf(", request timeout %dms", cmdArgs.Timeout)
 	}
 
-	if cmdArgs.Force != 0 {
-		str += fmt.Sprintf(", force cancel request after %dms", cmdArgs.Force)
-	}
-
-	if cmdArgs.HTTPVersion == HTTP2 {
+	if cmdArgs.Version == HTTP2 {
 		str += fmt.Sprintf(", HTTP2")
 	}
 
@@ -113,13 +106,13 @@ func (cmdArgs CmdArgs) String() (str string) {
 
 // ParseCmdArgs 从命令行读取参数
 // ParseCmdArgs paser args from cmd
-func ParseCmdArgs() (cmdArgs CmdArgs) {
+func ParseCmdArgs() (cmdArgs *CmdArgs) {
 	argc := len(os.Args)
 	if argc <= 1 {
 		panic("gobench need at least one parameter")
 	}
-	url := os.Args[argc-1]
 
+	target := os.Args[argc-1]
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "gobench [option]... URL:\n\n")
 		flag.PrintDefaults()
@@ -129,8 +122,8 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	var appVersion bool
 	flag.BoolVar(&appVersion, "version", false, "Display program version.")
 
-	var clients int
-	flag.IntVar(&clients, "client", 1, "Run <n> HTTP clients at once.")
+	var thread int
+	flag.IntVar(&thread, "thread", 1, "Run <n> threads at once.")
 
 	var runTime int
 	flag.IntVar(&runTime, "time", 60, "Run gobench for <sec> seconds.")
@@ -152,16 +145,13 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 	flag.BoolVar(&traceMethod, "trace", false, "Use TRACE request method.")
 
 	var data string
-	flag.StringVar(&data, "data", "", "Send data only if the method is post.")
+	flag.StringVar(&data, "data", "", "Post data, json format supports only.")
 
 	var reload bool
 	flag.BoolVar(&reload, "reload", false, "Send reload request - Pragma: no-cache.")
 
 	var interval int
 	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client <millisecond>.")
-
-	var force int
-	flag.IntVar(&force, "force", 0, "Client will cancel request and not wait response from server after given duration <millisecond>.")
 
 	var timeout int
 	flag.IntVar(&timeout, "timeout", 1000, "Request timeout <millisecond>.")
@@ -191,20 +181,21 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		httpMethod = TRACE
 	}
 
-	if !strings.HasPrefix(url, HTTPPrefix) && !strings.HasPrefix(url, HTTPSPrefix) {
+	if !strings.HasPrefix(target, HTTPPrefix) &&
+		!strings.HasPrefix(target, HTTPSPrefix) {
 		if http2 {
-			url = HTTPSPrefix + url
+			target = HTTPSPrefix + target
 		} else {
-			url = HTTPPrefix + url
+			target = HTTPPrefix + target
 		}
-	} else if strings.HasPrefix(url, HTTPPrefix) {
+	} else if strings.HasPrefix(target, HTTPPrefix) {
 		if http2 {
 			panic("http2 only support https")
 		}
 	}
 
-	if _, err := uri.ParseRequestURI(url); err != nil {
-		panic("invalid target url")
+	if _, err := uri.ParseRequestURI(target); err != nil {
+		panic("invalid target target")
 	}
 
 	if proxy != "" {
@@ -223,59 +214,18 @@ func ParseCmdArgs() (cmdArgs CmdArgs) {
 		timeout = cDefaultTimeout
 	}
 
-	cmdArgs = CmdArgs{
-		URL:         url,
-		Time:        time.Second * time.Duration(runTime),
-		Proxy:       proxy,
-		SOCKS5:      socks5,
-		Clients:     clients,
-		HTTPVersion: httpVersion,
-		HTTPMethod:  httpMethod,
-		Data:        data,
-		Reload:      reload,
-		Force:       force,
-		Interval:    interval,
-		Timeout:     timeout,
-	}
-	return
-}
-
-// Task struct
-type Task struct {
-	URL         string
-	HTTPVersion int
-	HTTPMethod  string
-	HTTPHeader  map[string]string // Todo, support more parameters
-	Proxy       string
-	SOCKS5      string
-	Data        string
-	Timeout     time.Duration
-	Force       time.Duration
-}
-
-// CreateTask create a task from given cmd args
-func CreateTask(cmdArgs CmdArgs) (task *Task) {
-	force := time.Duration(cmdArgs.Force) * time.Millisecond
-	timeout := force
-	if cmdArgs.Force <= cDefaultTimeout {
-		timeout = time.Duration(cmdArgs.Timeout) * time.Millisecond
-	}
-
-	header := make(map[string]string)
-	if cmdArgs.Reload {
-		header["Pragma"] = "no-cache"
-	}
-
-	task = &Task{
-		URL:         cmdArgs.URL,
-		HTTPVersion: cmdArgs.HTTPVersion,
-		HTTPMethod:  cmdArgs.HTTPMethod,
-		HTTPHeader:  header,
-		Proxy:       cmdArgs.Proxy,
-		Timeout:     timeout,
-		Force:       force,
-		SOCKS5:      cmdArgs.SOCKS5,
-		Data:        cmdArgs.Data,
+	cmdArgs = &CmdArgs{
+		Target:   target,
+		Time:     time.Second * time.Duration(runTime),
+		Proxy:    proxy,
+		SOCKS5:   socks5,
+		Thread:   thread,
+		Version:  httpVersion,
+		Method:   httpMethod,
+		Data:     data,
+		Reload:   reload,
+		Interval: time.Millisecond * time.Duration(interval),
+		Timeout:  time.Millisecond * time.Duration(timeout),
 	}
 	return
 }

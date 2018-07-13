@@ -21,7 +21,7 @@ import (
 // Program info
 const (
 	// AppVersion gobench version
-	AppVersion = "1.04"
+	AppVersion = "1.00"
 	// Copyright copyright info
 	Copyright = "Copyright (c) zhvala 2017-2018, Apache 2.0 Open Source Software."
 )

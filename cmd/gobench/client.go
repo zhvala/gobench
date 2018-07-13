@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -31,7 +30,6 @@ import (
 
 //ClientPool contains a amount of clients, each client runs in a goroutine
 type ClientPool struct {
-	taskChan   chan *Task
 	resultChan chan Result
 	taskWg     sync.WaitGroup
 	resultWg   sync.WaitGroup
@@ -39,11 +37,44 @@ type ClientPool struct {
 	startTime  time.Time
 }
 
-//CreateClientPool create a client pool, retuen its pointer
-func CreateClientPool(clientNum int) *ClientPool {
-	if clientNum <= 0 {
-		panic("invalid client num")
+func configTransport(task *Task) *http.Transport {
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
+
+	if task.Proxy != "" {
+		transport.Proxy = func(*http.Request) (*url.URL, error) {
+			return url.Parse(task.Proxy)
+		}
+	} else if task.SOCKS5 != "" {
+		transport.Dial = (&socks5.Client{
+			Network: "tcp",
+			Addr:    task.SOCKS5,
+		}).Dial
+	}
+
+	if task.HTTPVersion == HTTP2 {
+		http2.ConfigureTransport(transport)
+	}
+
+	return transport
+}
+
+//NewClientPool create a client pool, return its pointer
+func NewClientPool(args *CmdArgs) *ClientPool {
+	if args == nil {
+		panic("empty args")
+	}
+
 	pool := ClientPool{
 		taskChan:   make(chan *Task),
 		resultChan: make(chan Result),
@@ -57,11 +88,18 @@ func CreateClientPool(clientNum int) *ClientPool {
 		}
 	}()
 
+	transport := configTransport(task)
 	for i := 0; i < clientNum; i++ {
 		pool.taskWg.Add(1)
 		go func() {
 			defer pool.taskWg.Done()
-			client := &Client{}
+			client := &Client{
+				httpCli: &http.Client{
+					Timeout:   task.Timeout,
+					Transport: transport,
+				},
+			}
+
 			for task := range pool.taskChan {
 				pool.resultChan <- client.Process(task)
 				pool.resultWg.Add(1)
@@ -72,7 +110,7 @@ func CreateClientPool(clientNum int) *ClientPool {
 }
 
 // Run put a task into taskChan queue
-func (pool *ClientPool) Run(task *Task) {
+func (pool *ClientPool) Run() {
 	pool.taskChan <- task
 }
 
@@ -136,16 +174,19 @@ func (pool *ClientPool) ShowResult() {
 	}
 }
 
+func newClient() {
+
+}
+
 // Client http client
 type Client struct {
+	httpCli *http.Client
+	task    *Task
+	req     *http.Request
 }
 
 // Process do http request
-func (client *Client) Process(task *Task) (result Result) {
-	if task == nil || (task.HTTPVersion != HTTP && task.HTTPVersion != HTTP2) {
-		return
-	}
-
+func (cli *Client) Process() (result Result) {
 	success := false
 	start := time.Now()
 	statusCode := -1
@@ -162,54 +203,13 @@ func (client *Client) Process(task *Task) (result Result) {
 		}
 	}()
 
-	var httpCli *http.Client
-
-	proxyFunc := (func(*http.Request) (*url.URL, error))(nil)
-	dialFunc := net.Dial
-	if task.Proxy != "" {
-		proxyFunc = func(*http.Request) (*url.URL, error) {
-			return url.Parse(task.Proxy)
-		}
-	} else if task.SOCKS5 != "" {
-		client := &socks5.Client{
-			Network: "tcp",
-			Addr:    task.SOCKS5,
-		}
-		dialFunc = client.Dial
-	}
-
-	transport := &http.Transport{
-		Dial:  dialFunc,
-		Proxy: proxyFunc,
-	}
-
-	if task.HTTPVersion == HTTP2 {
-		http2.ConfigureTransport(transport)
-	}
-
-	httpCli = &http.Client{
-		Timeout:   task.Timeout,
-		Transport: transport,
-	}
-
-	cx, cancel := context.WithCancel(context.Background())
+	header["Pragma"] = "no-cache"
 	req, err := http.NewRequest(task.HTTPMethod, task.URL, nil)
 	if err != nil {
-		cancel()
 		return
 	}
-	req = req.WithContext(cx)
 
-	if task.Force > time.Duration(0) {
-		go func() {
-			time.Sleep(task.Force)
-			cancel()
-		}()
-	} else {
-		defer cancel()
-	}
-
-	rep, err := httpCli.Do(req)
+	rep, err := client.httpCli.Do(req)
 	if err != nil {
 		return
 	}

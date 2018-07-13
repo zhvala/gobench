@@ -28,51 +28,45 @@ func globalPanicHandle() {
 	}
 }
 
-func main() {
-	defer globalPanicHandle()
-	fmt.Fprintf(os.Stderr, "Gobench - simple web benchmark - version %s\n", AppVersion)
+func showCopyRight() {
+	fmt.Fprintf(os.Stderr, "gobench - simple web benchmark - version %s\n", AppVersion)
 	fmt.Fprintln(os.Stderr, Copyright)
 	fmt.Fprintf(os.Stderr, "\n")
-	// get cmd args
-	cmdArgs := ParseCmdArgs()
-	fmt.Fprintln(os.Stderr, cmdArgs)
-	task := CreateTask(cmdArgs)
-	pool := CreateClientPool(cmdArgs.Clients)
+}
 
-	/* listen sys signal */
+func listenSysSignal() chan os.Signal {
 	osSignal := make(chan os.Signal, 1)
 	sysSignalListen := []os.Signal{
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,
-		// syscall.SIGTSTP,
 	}
 	signal.Notify(osSignal, sysSignalListen...)
+	return osSignal
+}
+
+func main() {
+	defer globalPanicHandle()
+
+	// get cmd args
+	cmdArgs := ParseCmdArgs()
+	pool := NewClientPool(cmdArgs)
+
+	/* listen sys signal */
+	osSignal := listenSysSignal()
+
 	/* listen stop signal */
 	stopSignal := time.After(cmdArgs.Time)
 
-	counter := 0
-LOOP:
-	for {
-		select {
-		case signal := <-osSignal:
-			fmt.Fprintf(os.Stderr, "gobench interrupted by signal: %s\n", signal)
-			break LOOP
-		case <-stopSignal:
-			break LOOP
-		default:
-			pool.Run(task)
-			counter++
-			if counter >= cmdArgs.Clients {
-				counter = 0
-				if cmdArgs.Interval >= 0 {
-					interval := time.Duration(cmdArgs.Interval) * time.Millisecond
-					time.Sleep(interval)
-				}
-			}
-		}
+	pool.Run()
+
+	select {
+	case signal := <-osSignal:
+		fmt.Fprintf(os.Stderr, "gobench interrupted by signal: %s.\n", signal)
+	case <-stopSignal:
+		fmt.Fprintf(os.Stderr, "gobench task stopped.\n")
 	}
 
-	// Show task result here
+	// show task result here
 	pool.ShowResult()
 }
