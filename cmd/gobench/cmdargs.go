@@ -25,14 +25,14 @@ import (
 // CmdArgs store cmd args
 // CmdArgs 命令行参数
 type CmdArgs struct {
-	// Target
+	// URL
 	// target url
 	// 目标地址
-	Target string
-	// Time
+	URL string
+	// Duration
 	// duration
 	// 运行时间
-	Time time.Duration
+	Duration time.Duration
 	// Proxy
 	// http/https proxy address
 	// http/https代理地址
@@ -73,8 +73,8 @@ type CmdArgs struct {
 
 func (cmdArgs CmdArgs) String() (str string) {
 	str = fmt.Sprintf("%s %s, currency thread %d, for %s",
-		cmdArgs.Method, cmdArgs.Target,
-		cmdArgs.Thread, cmdArgs.Time)
+		cmdArgs.Method, cmdArgs.URL,
+		cmdArgs.Thread, cmdArgs.Duration)
 
 	if cmdArgs.Interval != 0 {
 		str += fmt.Sprintf(", with %dms interval", cmdArgs.Interval)
@@ -83,7 +83,7 @@ func (cmdArgs CmdArgs) String() (str string) {
 	}
 
 	if cmdArgs.Timeout != 0 {
-		str += fmt.Sprintf(", request timeout %dms", cmdArgs.Timeout)
+		str += fmt.Sprintf(", request timeout %s", cmdArgs.Timeout)
 	}
 
 	if cmdArgs.Version == HTTP2 {
@@ -112,7 +112,7 @@ func ParseCmdArgs() (cmdArgs *CmdArgs) {
 		panic("gobench need at least one parameter")
 	}
 
-	target := os.Args[argc-1]
+	url := os.Args[argc-1]
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "gobench [option]... URL:\n\n")
 		flag.PrintDefaults()
@@ -125,8 +125,8 @@ func ParseCmdArgs() (cmdArgs *CmdArgs) {
 	var thread int
 	flag.IntVar(&thread, "thread", 1, "Run <n> threads at once.")
 
-	var runTime int
-	flag.IntVar(&runTime, "time", 60, "Run gobench for <sec> seconds.")
+	var duration int
+	flag.IntVar(&duration, "duration", 60, "Run gobench for <sec> seconds.")
 
 	var http2 bool
 	flag.BoolVar(&http2, "http2", false, "Use HTTP2 protocol.")
@@ -181,21 +181,21 @@ func ParseCmdArgs() (cmdArgs *CmdArgs) {
 		httpMethod = TRACE
 	}
 
-	if !strings.HasPrefix(target, HTTPPrefix) &&
-		!strings.HasPrefix(target, HTTPSPrefix) {
+	if !strings.HasPrefix(url, HTTPPrefix) &&
+		!strings.HasPrefix(url, HTTPSPrefix) {
 		if http2 {
-			target = HTTPSPrefix + target
+			url = HTTPSPrefix + url
 		} else {
-			target = HTTPPrefix + target
+			url = HTTPPrefix + url
 		}
-	} else if strings.HasPrefix(target, HTTPPrefix) {
+	} else if strings.HasPrefix(url, HTTPPrefix) {
 		if http2 {
 			panic("http2 only support https")
 		}
 	}
 
-	if _, err := uri.ParseRequestURI(target); err != nil {
-		panic("invalid target target")
+	if _, err := uri.ParseRequestURI(url); err != nil {
+		panic("invalid target url")
 	}
 
 	if proxy != "" {
@@ -215,8 +215,8 @@ func ParseCmdArgs() (cmdArgs *CmdArgs) {
 	}
 
 	cmdArgs = &CmdArgs{
-		Target:   target,
-		Time:     time.Second * time.Duration(runTime),
+		URL:      url,
+		Duration: time.Second * time.Duration(duration),
 		Proxy:    proxy,
 		SOCKS5:   socks5,
 		Thread:   thread,

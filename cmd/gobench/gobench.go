@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func globalPanicHandle() {
@@ -50,23 +49,22 @@ func main() {
 
 	// get cmd args
 	cmdArgs := ParseCmdArgs()
+	fmt.Println(cmdArgs)
 	pool := NewClientPool(cmdArgs)
 
 	/* listen sys signal */
 	osSignal := listenSysSignal()
 
-	/* listen stop signal */
-	stopSignal := time.After(cmdArgs.Time)
-
-	pool.Run()
+	ctx := pool.Run()
 
 	select {
 	case signal := <-osSignal:
 		fmt.Fprintf(os.Stderr, "gobench interrupted by signal: %s.\n", signal)
-	case <-stopSignal:
-		fmt.Fprintf(os.Stderr, "gobench task stopped.\n")
+		pool.Terminate()
+	case <-ctx.Done():
+		pool.Close()
 	}
 
 	// show task result here
-	pool.ShowResult()
+	// pool.ShowResult()
 }
