@@ -72,34 +72,40 @@ type CmdArgs struct {
 }
 
 func (cmdArgs CmdArgs) String() (str string) {
-	str = fmt.Sprintf("%s %s, currency thread %d, for %s",
-		cmdArgs.Method, cmdArgs.URL,
-		cmdArgs.Thread, cmdArgs.Duration)
+	str += fmt.Sprintln("URL: ", cmdArgs.URL)
+	str += fmt.Sprintln("HTTP method: ", cmdArgs.Method)
+
+	if cmdArgs.Version == HTTP2 {
+		str += fmt.Sprintln("HTTP version: HTTP2")
+	} else {
+		str += fmt.Sprintln("HTTP version: HTTP/1.1")
+	}
+
+	str += fmt.Sprintln("Thread num: ", cmdArgs.Thread)
+	str += fmt.Sprintln("Duration: ", cmdArgs.Duration)
 
 	if cmdArgs.Interval != 0 {
-		str += fmt.Sprintf(", with %dms interval", cmdArgs.Interval)
+		str += fmt.Sprintln("Request interval: ", cmdArgs.Interval)
 	} else {
-		str += fmt.Sprintf(", with no interval")
+		str += fmt.Sprintln("Request interval: none")
 	}
 
 	if cmdArgs.Timeout != 0 {
-		str += fmt.Sprintf(", request timeout %s", cmdArgs.Timeout)
-	}
-
-	if cmdArgs.Version == HTTP2 {
-		str += fmt.Sprintf(", HTTP2")
+		str += fmt.Sprintln("Request timeout: ", cmdArgs.Timeout)
+	} else {
+		str += fmt.Sprintln("Request timeout: none")
 	}
 
 	if cmdArgs.Reload {
-		str += fmt.Sprintf(", disable cache")
+		str += fmt.Sprintln("Disable cache: true")
 	}
 
 	if cmdArgs.Proxy != "" {
-		str += fmt.Sprintf(", proxy: %s", cmdArgs.Proxy)
+		str += fmt.Sprintln("Proxy: ", cmdArgs.Proxy)
 	}
 
 	if cmdArgs.SOCKS5 != "" {
-		str += fmt.Sprintf(", socks5 proxy: %s", cmdArgs.SOCKS5)
+		str += fmt.Sprintln("Socks5 proxy: ", cmdArgs.SOCKS5)
 	}
 	return
 }
@@ -154,7 +160,7 @@ func ParseCmdArgs() (cmdArgs *CmdArgs) {
 	flag.IntVar(&interval, "interval", 0, "Interval between each request of every client <millisecond>.")
 
 	var timeout int
-	flag.IntVar(&timeout, "timeout", 1000, "Request timeout <millisecond>.")
+	flag.IntVar(&timeout, "timeout", 0, "Request timeout <millisecond>.")
 
 	flag.Parse()
 
@@ -208,10 +214,6 @@ func ParseCmdArgs() (cmdArgs *CmdArgs) {
 		if _, err := uri.ParseRequestURI(socks5); err != nil {
 			panic("invalid socks5 proxy url")
 		}
-	}
-
-	if timeout == 0 {
-		timeout = cDefaultTimeout
 	}
 
 	cmdArgs = &CmdArgs{

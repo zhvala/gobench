@@ -46,25 +46,31 @@ func listenSysSignal() chan os.Signal {
 
 func main() {
 	defer globalPanicHandle()
+	// show copy right
+	showCopyRight()
 
 	// get cmd args
 	cmdArgs := ParseCmdArgs()
-	fmt.Println(cmdArgs)
-	pool := NewClientPool(cmdArgs)
+	fmt.Fprintln(os.Stdout, "Bench start:")
+	fmt.Fprintln(os.Stdout, cmdArgs)
+
+	// create bencher
+	bencher := NewBencher(cmdArgs)
 
 	/* listen sys signal */
 	osSignal := listenSysSignal()
 
-	ctx := pool.Run()
+	ctx := bencher.Run()
 
 	select {
 	case signal := <-osSignal:
-		fmt.Fprintf(os.Stderr, "gobench interrupted by signal: %s.\n", signal)
-		pool.Terminate()
+		fmt.Fprintf(os.Stderr, "Bench interrupted by signal: %s.\n", signal)
+		bencher.Terminate()
 	case <-ctx.Done():
-		pool.Close()
+		fmt.Fprintln(os.Stdout, "Bench finish.")
+		bencher.Close()
 	}
 
 	// show task result here
-	// pool.ShowResult()
+	fmt.Println(StatusFmt(cmdArgs.Duration, bencher.Status()))
 }
