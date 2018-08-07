@@ -24,12 +24,10 @@ export PATH=$GOPATH/bin:$PATH
 ```bash
 gobench [option]... URL:
 
-  -client int
-    	Run <n> HTTP clients at once. (default 1)
   -data string
-    	Send data only if the method is post.
-  -force int
-    	Client will cancel request and not wait response from server after given duration <millisecond>.
+    	Post data, json format supports only.
+  -duration int
+    	Run gobench for <sec> seconds. (default 60)
   -get
     	Use GET(default) request method.
   -head
@@ -48,10 +46,10 @@ gobench [option]... URL:
     	Send reload request - Pragma: no-cache.
   -socks5 string
     	Use socks5 proxy server for request <host:port>.
-  -time int
-    	Run gobench for <sec> seconds. (default 60)
+  -thread int
+    	Run <n> threads at once. (default 1)
   -timeout int
-    	Request timeout <millisecond>. (default 1000)
+    	Request timeout <millisecond>.
   -trace
     	Use TRACE request method.
   -version

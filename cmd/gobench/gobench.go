@@ -23,14 +23,14 @@ import (
 
 func globalPanicHandle() {
 	if err := recover(); err != nil {
-		fmt.Fprintf(os.Stderr, "program terminate, error: %s.\n", err)
+		fmt.Fprintln(os.Stderr, "program terminate, error: ", err)
 	}
 }
 
 func showCopyRight() {
-	fmt.Fprintf(os.Stderr, "gobench - simple web benchmark - version %s\n", AppVersion)
-	fmt.Fprintln(os.Stderr, Copyright)
-	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintln(os.Stdout, "gobench - simple web benchmark - version ", AppVersion)
+	fmt.Fprintln(os.Stdout, Copyright)
+	fmt.Fprintf(os.Stdout, "\n")
 }
 
 func listenSysSignal() chan os.Signal {
@@ -64,7 +64,7 @@ func main() {
 
 	select {
 	case signal := <-osSignal:
-		fmt.Fprintf(os.Stderr, "Bench interrupted by signal: %s.\n", signal)
+		fmt.Fprintln(os.Stdout, "Bench interrupted by signal: ", signal)
 		bencher.Terminate()
 	case <-ctx.Done():
 		fmt.Fprintln(os.Stdout, "Bench finish.")
@@ -72,5 +72,5 @@ func main() {
 	}
 
 	// show task result here
-	fmt.Println(StatusFmt(cmdArgs.Duration, bencher.Status()))
+	fmt.Fprintln(os.Stdout, StatusFmt(cmdArgs.Duration, bencher.Status()))
 }
