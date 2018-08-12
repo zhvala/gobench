@@ -42,6 +42,7 @@ import (
 // sendCounter, total input bytes
 // recvCounter, total output bytes
 type Status struct {
+	startTime   time.Time
 	reqCounter  int64
 	sucCounter  int64
 	failCounter int64
@@ -51,8 +52,8 @@ type Status struct {
 }
 
 // StatusFmt convert Status to  readable string
-func StatusFmt(duration time.Duration, status Status) (str string) {
-	seconds := int64(duration.Seconds())
+func StatusFmt(status Status) (str string) {
+	seconds := int64(time.Now().Sub(status.startTime).Seconds())
 
 	str += fmt.Sprintln("Total requests: ", status.reqCounter)
 	str += fmt.Sprintln("Success requests: ", status.sucCounter)
@@ -94,12 +95,12 @@ func createTransport(args *CmdArgs) *http.Transport {
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
+			Timeout:   15 * time.Second,
+			KeepAlive: 15 * time.Second,
 			DualStack: true,
 		}).DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
+		MaxIdleConnsPerHost:   args.Thread,
+		IdleConnTimeout:       args.Duration,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
@@ -130,9 +131,38 @@ func NewBencher(args *CmdArgs) *Bencher {
 	bencher := Bencher{
 		args:     args,
 		httpTran: createTransport(args),
+		status:   Status{startTime: time.Now()},
 	}
 
 	return &bencher
+}
+
+func (bencher *Bencher) newRequest() (req *http.Request, size int64) {
+	var body io.Reader
+	if bencher.args.Data != "" {
+		body = bytes.NewBuffer([]byte(bencher.args.Data))
+	}
+
+	req, err := http.NewRequest(bencher.args.Method, bencher.args.URL, body)
+	if err != nil {
+		return nil, 0
+	}
+
+	reqDump, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		return nil, 0
+	}
+	size = int64(len(reqDump))
+
+	if body != nil {
+		req.Header.Add("Content-Type", "application/json;charset=utf-8")
+	}
+
+	if bencher.args.Reload {
+		req.Header.Add("Pragma", "no-cache")
+	}
+
+	return req, size
 }
 
 func (bencher *Bencher) process(ctx context.Context) {
@@ -143,30 +173,6 @@ func (bencher *Bencher) process(ctx context.Context) {
 		Transport: bencher.httpTran,
 	}
 
-	var body io.Reader
-	if bencher.args.Data != "" {
-		body = bytes.NewBuffer([]byte(bencher.args.Data))
-	}
-
-	req, err := http.NewRequest(bencher.args.Method, bencher.args.URL, body)
-	if err != nil {
-		return
-	}
-
-	reqDump, err := httputil.DumpRequest(req, true)
-	if err != nil {
-		return
-	}
-	sendSize := int64(len(string(reqDump)))
-
-	if body != nil {
-		req.Header.Add("Content-Type", "application/json;charset=utf-8")
-	}
-
-	if bencher.args.Reload {
-		req.Header.Add("Pragma", "no-cache")
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -174,6 +180,7 @@ func (bencher *Bencher) process(ctx context.Context) {
 		default:
 			atomic.AddInt64(&bencher.status.reqCounter, 1)
 			start := time.Now()
+			req, sendSize := bencher.newRequest()
 			rep, err := httpCli.Do(req)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
@@ -198,7 +205,7 @@ func (bencher *Bencher) process(ctx context.Context) {
 				atomic.AddInt64(&bencher.status.failCounter, 1)
 				continue
 			}
-			atomic.AddInt64(&bencher.status.recvCounter, int64(len(string(repDump))))
+			atomic.AddInt64(&bencher.status.recvCounter, int64(len(repDump)))
 			atomic.AddInt64(&bencher.status.costCounter, int64(cost))
 		}
 	}

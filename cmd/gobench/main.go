@@ -67,10 +67,10 @@ func main() {
 		fmt.Fprintln(os.Stdout, "Bench interrupted by signal: ", signal)
 		bencher.Terminate()
 	case <-ctx.Done():
-		fmt.Fprintln(os.Stdout, "Bench finish.")
 		bencher.Close()
 	}
 
 	// show task result here
-	fmt.Fprintln(os.Stdout, StatusFmt(cmdArgs.Duration, bencher.Status()))
+	fmt.Fprintln(os.Stdout, "Bench result:")
+	fmt.Fprintln(os.Stdout, StatusFmt(bencher.Status()))
 }
