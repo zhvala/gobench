@@ -9,7 +9,7 @@
 - Supports GET, POST, HEAD, OPTION, TRACE
 - Support both HTTP/HTTPS and SOCKS5 proxy
 - Support HTTP/1.1 and HTTP/2
-- High concurrency
+- High concurrency 
 
 ## Installation
 
@@ -56,5 +56,82 @@ gobench [option]... URL:
     	Display program version.
 ```
 
+## Example
+
+```shell
+# GET
+gobench -thread=50 -duration=120 http://127.0.0.1:8082/hello
+# POST
+gobench -thread=50 -duration=120 -post -data='{"data": "hello,world"}' http://127.0.0.1:8082/echo
+```
+
+## Performance
+
+### Environment
+
+| Hardware | Parameters                                                   |
+| -------- | ------------------------------------------------------------ |
+| CPU      | Intel(R) Xeon(R) CPU E5-2620 v3 @  2.40GHz (4 x 6 = 24 cores) |
+| MEM      | 64GB                                                         |
+
+### Echo-Server-Test
+
+#### GET
+
+```shell
+> gobench -thread=50  http://172.31.0.193:8082/hello
+gobench - simple web benchmark - version  1.00
+Copyright (c) zhvala 2017-2018, Apache 2.0 Open Source Software.
+
+Bench start:
+URL:  http://172.31.0.193:8082/hello
+HTTP method:  GET
+HTTP version: HTTP/1.1
+Thread num:  50
+Duration:  1m0s
+Request interval: none
+Request timeout: none
+
+Bench finish.
+Total requests:  4982972
+Success requests:  4982972
+Failed requests:  0
+Requests per second:  83049
+Average response time:  385.216µs
+Total send:  228.1 MiB
+Total recv:  613.0 MiB
+Send per second:  3.8 MiB
+Recv per second:  10.2 MiB
+```
+
+#### POST
+
+```shell
+> gobench -thread=50 -post -data='{"data": "hello,world"}' http://172.31.0.193:8082/echo
+gobench - simple web benchmark - version  1.00
+Copyright (c) zhvala 2017-2018, Apache 2.0 Open Source Software.
+
+Bench start:
+URL:  http://172.31.0.193:8082/echo
+HTTP method:  POST
+HTTP version: HTTP/1.1
+Thread num:  50
+Duration:  1m0s
+Request interval: none
+Request timeout: none
+
+Bench finish.
+Total requests:  3909748
+Success requests:  3909748
+Failed requests:  0
+Requests per second:  65162
+Average response time:  535.24µs
+Total send:  264.7 MiB
+Total recv:  522.0 MiB
+Send per second:  4.4 MiB
+Recv per second:  8.7 MiB
+```
+
 ## Author
+
 zhvala(zhvala@foxmail.com)
