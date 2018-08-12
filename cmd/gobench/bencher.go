@@ -54,6 +54,9 @@ type Status struct {
 // StatusFmt convert Status to  readable string
 func StatusFmt(status Status) (str string) {
 	seconds := int64(time.Now().Sub(status.startTime).Seconds())
+	if seconds <= 0 {
+		seconds = 1
+	}
 
 	str += fmt.Sprintln("Total requests: ", status.reqCounter)
 	str += fmt.Sprintln("Success requests: ", status.sucCounter)
